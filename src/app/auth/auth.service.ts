@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
-import { AuthData } from './auth-data.model';
-import { User } from './user.model';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { Router } from '@angular/router';
+import { AngularFireAuth } from '@angular/fire/auth';
+
+import { AuthData } from './auth-data.model';
+import { User } from './user.model';
 
 @Injectable({
   providedIn: 'root'
@@ -12,56 +14,53 @@ export class AuthService {
 
   private storageKey = 'fitness_tracker_user';
 
-  private user: User;
+  private isAuthenticated: boolean;
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private afAuth: AngularFireAuth) {
     this.authChange.subscribe(status => console.log('AUTH::STATUS', status));
-    this.checkForStorageUser();
+  }
+
+  initAuthListener() {
+    this.afAuth.authState.subscribe(user => {
+      if (user) {
+        this.isAuthenticated = true;
+        this.authChange.next(true);
+        this.router.navigate(['/training']);
+      } else {
+        this.isAuthenticated = true;
+        this.authChange.next(false);
+        this.router.navigate(['/login']);
+      }
+    });
   }
 
   registerUser(userData: AuthData) {
-    this.user = {
-      email: userData.email,
-      userId: Math.round(Math.random() * 10000).toString()
-    };
-    this.authChange.next(true);
-    this.authSuccessfully();
+    this.afAuth.createUserWithEmailAndPassword(
+      userData.email, userData.password
+    ).then(result => {
+      console.log('SIGN_SUCCESS', result);
+    }).catch(error => {
+      console.log('SIGN_ERROR', error);
+    });
   }
 
   login(userData: AuthData) {
-    this.user = {
-      email: userData.email,
-      userId: Math.round(Math.random() * 10000).toString()
-    };
-    localStorage.setItem(this.storageKey, JSON.stringify(userData));
-    this.authChange.next(true);
-    this.authSuccessfully();
+    this.afAuth.signInWithEmailAndPassword(
+      userData.email,
+      userData.password
+    ).then(result => {
+      console.log('LOGIN_SUCCESS', result);
+    }).catch(error => {
+      console.log('LOGIN_ERROR', error);
+    });
   }
 
   logout() {
-    this.user = null;
-    localStorage.removeItem(this.storageKey);
-    this.authChange.next(false);
-    this.router.navigate(['/login']);
-  }
-
-  getUser(): User {
-    return this.isAuth() ? { ...this.user } : null;
+    this.afAuth.signOut();
   }
 
   isAuth(): boolean {
-    return !!this.user;
+    return !!this.isAuthenticated;
   }
 
-  private checkForStorageUser() {
-    const storageUser = localStorage.getItem(this.storageKey);
-    if (storageUser) {
-      const authData = JSON.parse(storageUser) as AuthData;
-      this.login(authData);
-    }
-  }
-
-  private authSuccessfully() {
-    this.router.navigate(['/training']);
-  }
 }

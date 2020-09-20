@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { AngularFirestore } from '@angular/fire/firestore';
-import { Subject, BehaviorSubject } from 'rxjs';
+import { Subject, BehaviorSubject, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { AuthService } from '../auth/auth.service';
 import { Exercise, State } from './exercise.model';
 
 @Injectable({
@@ -18,14 +19,18 @@ export class TrainingService {
 
   private runningExercise: Exercise;
 
-  private finishedExercises: Exercise[] = [];
+  subscriptions: Subscription[] = [];
 
-  constructor(private db: AngularFirestore) {
-
+  constructor(private db: AngularFirestore, private authService: AuthService) {
+    this.authService.authChange.subscribe(isAuth => {
+      if (!isAuth) {
+        this.subscriptions.forEach(subs => subs.unsubscribe());
+      }
+    });
   }
 
   fetchAvailableExercises(): BehaviorSubject<Exercise[]> {
-    this.db.collection('availableExercises')
+    const subs$ = this.db.collection('availableExercises')
       .snapshotChanges()
       .pipe(map(actions => actions.map(this.documentToDomainObject)))
       .subscribe((exercises: Exercise[]) => {
@@ -33,6 +38,7 @@ export class TrainingService {
         this.availableExercises = exercises;
         this.exercisesChanged.next([...this.availableExercises]);
       });
+    this.subscriptions.push(subs$);
     return this.exercisesChanged;
   }
 
@@ -77,11 +83,12 @@ export class TrainingService {
   }
 
   fecthCompletedOrCanceled() {
-    this.db.collection('finishedExercises')
+    const subs$ = this.db.collection('finishedExercises')
       .valueChanges()
       .subscribe((exercises: Exercise[]) => {
         this.finishedExercisesChenged.next(exercises);
       });
+    this.subscriptions.push(subs$);
   }
 
   private documentToDomainObject = _ => {
