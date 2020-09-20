@@ -1,36 +1,45 @@
 import { Injectable } from '@angular/core';
-import { Subject, of } from 'rxjs';
+import { AngularFirestore } from '@angular/fire/firestore';
+import { Subject, BehaviorSubject } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { Exercise, State } from './exercise.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TrainingService {
-  private availableExercises: Exercise[] = [
-    { id: 'crunches', name: 'Crunches', duration: 30, calories: 8 },
-    { id: 'touch-toes', name: 'Touch Toes', duration: 180, calories: 15 },
-    { id: 'side-lunges', name: 'Side Lunges', duration: 120, calories: 18 },
-    { id: 'burpess', name: 'Burpees', duration: 60, calories: 8 }
-  ];
+  private availableExercises: Exercise[] = [];
 
   private storageKey = 'fitness_tracker_exercises';
 
   exerciseChanged: Subject<Exercise> = new Subject<Exercise>();
+  exercisesChanged: BehaviorSubject<Exercise[]> = new BehaviorSubject<Exercise[]>([]);
+  finishedExercisesChenged: BehaviorSubject<Exercise[]> = new BehaviorSubject<Exercise[]>([]);
 
   private runningExercise: Exercise;
 
-  private exercises: Exercise[] = [];
+  private finishedExercises: Exercise[] = [];
 
-  constructor() {
-    const storageExercies = localStorage.getItem(this.storageKey);
-    this.exercises = storageExercies ? JSON.parse(storageExercies) : [];
+  constructor(private db: AngularFirestore) {
+
   }
 
-  getExercises() {
-    return of(this.availableExercises.slice());
+  fetchAvailableExercises(): BehaviorSubject<Exercise[]> {
+    this.db.collection('availableExercises')
+      .snapshotChanges()
+      .pipe(map(actions => actions.map(this.documentToDomainObject)))
+      .subscribe((exercises: Exercise[]) => {
+        console.log('exercises::', exercises);
+        this.availableExercises = exercises;
+        this.exercisesChanged.next([...this.availableExercises]);
+      });
+    return this.exercisesChanged;
   }
 
   startExercise(selectedId: string) {
+    this.db.doc('availableExercises/' + selectedId).update({
+      lastSelected: new Date()
+    });
     this.runningExercise = this.availableExercises.find(ex => ex.id === selectedId);
     this.exerciseChanged.next({ ...this.runningExercise });
   }
@@ -45,7 +54,7 @@ export class TrainingService {
       date: new Date(),
       state: State.completed
     };
-    this.addExercise(exercise);
+    this.addDataToDatabase(exercise);
     this.runningExercise = null;
     this.exerciseChanged.next(null);
   }
@@ -58,7 +67,7 @@ export class TrainingService {
       date: new Date(),
       state: State.cancelled
     };
-    this.addExercise(exercise);
+    this.addDataToDatabase(exercise);
     this.runningExercise = null;
     this.exerciseChanged.next(null);
   }
@@ -67,12 +76,21 @@ export class TrainingService {
     return { ...this.runningExercise };
   }
 
-  getCompletedOrCanceled() {
-    return [...this.exercises];
+  fecthCompletedOrCanceled() {
+    this.db.collection('finishedExercises')
+      .valueChanges()
+      .subscribe((exercises: Exercise[]) => {
+        this.finishedExercisesChenged.next(exercises);
+      });
   }
 
-  private addExercise(exercise: Exercise) {
-    this.exercises.push(exercise);
-    localStorage.setItem(this.storageKey, JSON.stringify(this.exercises));
+  private documentToDomainObject = _ => {
+    const object = _.payload.doc.data();
+    object.id = _.payload.doc.id;
+    return object;
+  }
+
+  private addDataToDatabase(exercise: Exercise) {
+    this.db.collection('finishedExercises').add(exercise);
   }
 }

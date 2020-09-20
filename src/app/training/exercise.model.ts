@@ -1,8 +1,7 @@
 
 export enum State {
-  'completed',
-  'cancelled',
-  null
+  'completed' = 'completed',
+  'cancelled' = 'cancelled'
 }
 
 export interface Exercise {
