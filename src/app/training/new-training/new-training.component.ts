@@ -5,6 +5,7 @@ import { map } from 'rxjs/operators';
 import { Exercise } from '../exercise.model';
 import { TrainingService } from '../training.service';
 import { AngularFirestore } from '@angular/fire/firestore';
+import { UiService } from 'src/app/shared/ui.service';
 
 @Component({
   selector: 'app-new-training',
@@ -12,25 +13,24 @@ import { AngularFirestore } from '@angular/fire/firestore';
   styleUrls: ['./new-training.component.scss']
 })
 export class NewTrainingComponent implements OnInit, OnDestroy {
+  loading = false;
 
   exercises: Exercise[] = [];
 
-  exerciseSuscription: Subscription;
+  subscriptions: Subscription[] = [];
 
-  constructor(private trainingService: TrainingService, private db: AngularFirestore) {
-    // this.exerciseSuscription = this.trainingService.getExercises()
-    //   .subscribe(exercises => this.availableExercises = exercises);
-  }
+  constructor(
+    private trainingService: TrainingService,
+    private uiService: UiService) { }
 
   ngOnInit(): void {
     this.trainingService.exercisesChanged.subscribe(r => this.exercises = r);
     this.trainingService.fetchAvailableExercises();
-  }
-
-  documentToDomainObject = _ => {
-    const object = _.payload.doc.data();
-    object.id = _.payload.doc.id;
-    return object;
+    this.subscriptions.push(
+      this.uiService.loadingStateChanged.subscribe(
+        loading => this.loading = loading
+      )
+    );
   }
 
   onStartTraining(form: NgForm) {
@@ -38,7 +38,7 @@ export class NewTrainingComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
-    // this.exerciseSuscription.unsubscribe();
+    this.subscriptions.forEach(subs => subs.unsubscribe());
   }
 
 }

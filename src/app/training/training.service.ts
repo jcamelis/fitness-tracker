@@ -3,6 +3,7 @@ import { AngularFirestore } from '@angular/fire/firestore';
 import { Subject, BehaviorSubject, Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { AuthService } from '../auth/auth.service';
+import { UiService } from '../shared/ui.service';
 import { Exercise, State } from './exercise.model';
 
 @Injectable({
@@ -21,7 +22,11 @@ export class TrainingService {
 
   subscriptions: Subscription[] = [];
 
-  constructor(private db: AngularFirestore, private authService: AuthService) {
+  constructor(
+    private db: AngularFirestore,
+    private authService: AuthService,
+    private uiService: UiService
+  ) {
     this.authService.authChange.subscribe(isAuth => {
       if (!isAuth) {
         this.subscriptions.forEach(subs => subs.unsubscribe());
@@ -30,11 +35,13 @@ export class TrainingService {
   }
 
   fetchAvailableExercises(): BehaviorSubject<Exercise[]> {
+    this.uiService.loadingStateChanged.next(true);
     const subs$ = this.db.collection('availableExercises')
       .snapshotChanges()
       .pipe(map(actions => actions.map(this.documentToDomainObject)))
       .subscribe((exercises: Exercise[]) => {
         console.log('exercises::', exercises);
+        this.uiService.loadingStateChanged.next(false);
         this.availableExercises = exercises;
         this.exercisesChanged.next([...this.availableExercises]);
       });
@@ -83,10 +90,12 @@ export class TrainingService {
   }
 
   fecthCompletedOrCanceled() {
+    this.uiService.loadingStateChanged.next(true);
     const subs$ = this.db.collection('finishedExercises')
       .valueChanges()
       .subscribe((exercises: Exercise[]) => {
         this.finishedExercisesChenged.next(exercises);
+        this.uiService.loadingStateChanged.next(false);
       });
     this.subscriptions.push(subs$);
   }
