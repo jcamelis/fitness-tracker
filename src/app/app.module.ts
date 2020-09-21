@@ -21,6 +21,9 @@ import { HeaderComponent } from './navigation/header/header.component';
 import { SidenavListComponent } from './navigation/sidenav-list/sidenav-list.component';
 import { StopDialogComponent } from './training/current-training/stop-dialog/stop-dialog.component';
 import { environment } from '../environments/environment';
+import { UiService } from './shared/ui.service';
+import { AuthService } from './auth/auth.service';
+import { TrainingService } from './training/training.service';
 
 @NgModule({
   declarations: [
@@ -48,7 +51,11 @@ import { environment } from '../environments/environment';
     AngularFirestoreModule,
     AngularFireAuthModule
   ],
-  providers: [],
+  providers: [
+    AuthService,
+    TrainingService,
+    UiService
+  ],
   entryComponents: [
     StopDialogComponent
   ],
