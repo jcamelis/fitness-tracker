@@ -20,7 +20,7 @@ export class AuthService {
   constructor(
     private router: Router,
     private afAuth: AngularFireAuth,
-    private snackBar: MatSnackBar,
+    // private snackBar: MatSnackBar,
     private uiService: UiService
   ) {
     this.authChange.subscribe(status => console.log('AUTH::STATUS', status));
@@ -50,7 +50,8 @@ export class AuthService {
     }).catch(error => {
       console.log('SIGN_ERROR', error);
       this.uiService.loadingStateChanged.next(false);
-      this.snackBar.open(error.message, null, { duration: 3000 });
+      this.uiService.showSnackBar(error.message, null, 3000);
+      // this.snackBar.open(error.message, null, { duration: 3000 });
     });
   }
 
@@ -65,7 +66,8 @@ export class AuthService {
     }).catch(error => {
       console.log('LOGIN_ERROR', error);
       this.uiService.loadingStateChanged.next(false);
-      this.snackBar.open(error.message, null, { duration: 3000 });
+      this.uiService.showSnackBar(error.message, null, 3000);
+      // this.snackBar.open(error.message, null, { duration: 3000 });
     });
   }
 

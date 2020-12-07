@@ -39,11 +39,20 @@ export class TrainingService {
     const subs$ = this.db.collection('availableExercises')
       .snapshotChanges()
       .pipe(map(actions => actions.map(this.documentToDomainObject)))
+      // .pipe(
+      //   map(actions => {
+      //     throw(new Error('Cannot fetch exercises'));
+      //   })
+      // )
       .subscribe((exercises: Exercise[]) => {
         console.log('exercises::', exercises);
         this.uiService.loadingStateChanged.next(false);
         this.availableExercises = exercises;
         this.exercisesChanged.next([...this.availableExercises]);
+      }, error => {
+        this.uiService.loadingStateChanged.next(false);
+        this.uiService.showSnackBar(error.message, null, 3000);
+        this.exercisesChanged.next(null);
       });
     this.subscriptions.push(subs$);
     return this.exercisesChanged;
